@@ -11,24 +11,26 @@ const typeorm_1 = require("typeorm");
 const task_status_enum_1 = require("./task-status.enum");
 const task_entity_1 = require("./task.entity");
 let TasksRepository = class TasksRepository extends typeorm_1.Repository {
-    async getTasks(filterDto) {
+    async getTasks(filterDto, user) {
         const { status, search } = filterDto;
         const query = this.createQueryBuilder('task');
+        query.where({ user });
         if (status) {
-            query.andWhere('task.status = :status', { status: status });
+            query.andWhere('task.status = :status', { status });
         }
         if (search) {
-            query.andWhere('LOWER(task.tittle) LIKE LOWER(:search) OR LOWER(task.description) LIKE LOWER(:search)', { search: `%${search}%` });
+            query.andWhere('(LOWER(task.tittle) LIKE LOWER(:search) OR LOWER(task.description) LIKE LOWER(:search))', { search: `%${search}%` });
         }
         const tasks = await query.getMany();
         return tasks;
     }
-    async createTask(createTaskDto) {
+    async createTask(createTaskDto, user) {
         const { tittle, description } = createTaskDto;
         const task = this.create({
             tittle,
             description,
-            status: task_status_enum_1.TaskStatus.OPEN
+            status: task_status_enum_1.TaskStatus.OPEN,
+            user
         });
         await this.save(task);
         return task;
