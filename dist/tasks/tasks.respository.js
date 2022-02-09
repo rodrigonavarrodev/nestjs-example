@@ -7,10 +7,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksRepository = void 0;
+const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
 const task_status_enum_1 = require("./task-status.enum");
 const task_entity_1 = require("./task.entity");
 let TasksRepository = class TasksRepository extends typeorm_1.Repository {
+    constructor() {
+        super(...arguments);
+        this.logger = new common_1.Logger('TasksRepository', { timestamp: true });
+    }
     async getTasks(filterDto, user) {
         const { status, search } = filterDto;
         const query = this.createQueryBuilder('task');
@@ -21,8 +26,14 @@ let TasksRepository = class TasksRepository extends typeorm_1.Repository {
         if (search) {
             query.andWhere('(LOWER(task.tittle) LIKE LOWER(:search) OR LOWER(task.description) LIKE LOWER(:search))', { search: `%${search}%` });
         }
-        const tasks = await query.getMany();
-        return tasks;
+        try {
+            const tasks = await query.getMany();
+            return tasks;
+        }
+        catch (error) {
+            this.logger.error(`Failed to get tasks for user "${user.username}". Filters: ${JSON.stringify(filterDto)}`, error.stack);
+            throw new common_1.InternalServerErrorException();
+        }
     }
     async createTask(createTaskDto, user) {
         const { tittle, description } = createTaskDto;
